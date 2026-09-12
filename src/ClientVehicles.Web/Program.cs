@@ -1,5 +1,6 @@
 using ClientVehicles.Web.Data;
 using ClientVehicles.Web.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,14 @@ builder.Services.AddRazorPages();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")
                       ?? "Data Source=clientvehicles.db"));
+
+// Only used when the app runs behind a reverse proxy (see PathBase below).
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<VehicleService>();
@@ -25,6 +34,15 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db);
 }
 
+// Optional, unset by default: lets the app be hosted under a sub-path behind a reverse proxy
+// (PathBase=/demo) so that generated links stay correct. No effect when the setting is absent.
+var pathBase = builder.Configuration["PathBase"];
+if (!string.IsNullOrWhiteSpace(pathBase))
+{
+    app.UsePathBase(pathBase);
+    app.UseForwardedHeaders();
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -32,7 +50,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/Error", "?code={0}");
-app.UseHttpsRedirection();
+
+if (string.IsNullOrWhiteSpace(pathBase))
+{
+    // Behind a proxy TLS is terminated upstream, so the redirect is only useful when self hosted.
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRouting();
 app.MapRazorPages();

@@ -99,6 +99,10 @@ stylesheet of design tokens and small components. No jQuery either: confirmation
 vehicle block and the double submit guard are around 150 lines of plain JavaScript. Confirmations use
 an in-app modal, never `confirm()`.
 
+**Reverse proxy support is opt-in.** Setting a `PathBase` value (environment variable or
+appsettings) makes the app generate correct links when it is hosted under a sub-path behind nginx,
+and enables forwarded headers. Unset, which is the default, nothing changes.
+
 **Migrations are applied at startup** so that `dotnet run` is all you need. For a real deployment I
 would move this to an explicit release step and leave the app read-only at startup; the seeder already
 no-ops when the database has data.
