@@ -1,0 +1,97 @@
+@page "{id:int}"
+@model ClientVehicles.Web.Pages.Vehicles.DetailsModel
+@{
+    ViewData["Title"] = Model.Vehicle.LicensePlate;
+}
+
+<div class="breadcrumb">
+    <a asp-page="/Clients/Index">Clients</a> /
+    <a asp-page="/Clients/Details" asp-route-id="@Model.Vehicle.ClientId">@Model.Vehicle.Client.Name</a> /
+    @Model.Vehicle.LicensePlate
+</div>
+
+<div class="page-head">
+    <div class="page-head__text">
+        <h1>
+            @Model.Vehicle.Brand @Model.Vehicle.Model
+            @if (Model.Vehicle.IsArchived)
+            {
+                <span class="badge badge--archived">Archived</span>
+            }
+        </h1>
+        <p class="page-head__sub">
+            <span class="plate">@Model.Vehicle.LicensePlate</span>
+            owned by <a asp-page="/Clients/Details" asp-route-id="@Model.Vehicle.ClientId">@Model.Vehicle.Client.Name</a>
+        </p>
+    </div>
+    <div class="page-head__actions">
+        @if (!Model.Vehicle.IsArchived)
+        {
+            <a class="btn btn--secondary" asp-page="Edit" asp-route-id="@Model.Vehicle.Id">Edit</a>
+            <form method="post" class="inline-form" asp-page-handler="Archive" asp-route-id="@Model.Vehicle.Id"
+                  data-confirm="Archive @Model.Vehicle.LicensePlate? The record is kept and can be reactivated later."
+                  data-confirm-label="Archive">
+                <button type="submit" class="btn btn--ghost">Archive</button>
+            </form>
+        }
+        else if (!Model.Vehicle.Client.IsArchived)
+        {
+            <form method="post" class="inline-form" asp-page-handler="Reactivate" asp-route-id="@Model.Vehicle.Id"
+                  data-confirm="Reactivate @Model.Vehicle.LicensePlate?"
+                  data-confirm-label="Reactivate" data-confirm-kind="safe">
+                <button type="submit" class="btn btn--primary">Reactivate</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (Model.Vehicle.IsArchived && Model.Vehicle.Client.IsArchived)
+{
+    <div class="flash flash--warning">
+        The owner of this vehicle is archived. Reactivate @Model.Vehicle.Client.Name first, which also brings back the
+        vehicles that were archived together with them.
+    </div>
+}
+
+<div class="card">
+    <div class="card__head">
+        <h2>Vehicle details</h2>
+    </div>
+    <div class="card__body">
+        <dl class="def-list">
+            <div>
+                <dt>License plate</dt>
+                <dd class="mono">@Model.Vehicle.LicensePlate</dd>
+            </div>
+            <div>
+                <dt>VIN</dt>
+                <dd class="mono">@(string.IsNullOrEmpty(Model.Vehicle.Vin) ? "-" : Model.Vehicle.Vin)</dd>
+            </div>
+            <div>
+                <dt>Brand</dt>
+                <dd>@Model.Vehicle.Brand</dd>
+            </div>
+            <div>
+                <dt>Model</dt>
+                <dd>@Model.Vehicle.Model</dd>
+            </div>
+            <div>
+                <dt>Current mileage</dt>
+                <dd>@(Model.Vehicle.Mileage.HasValue ? $"{Model.Vehicle.Mileage.Value:n0} km" : "-")</dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd>
+                    @if (Model.Vehicle.IsArchived)
+                    {
+                        <span class="badge badge--archived">Archived</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge--active">Active</span>
+                    }
+                </dd>
+            </div>
+        </dl>
+    </div>
+</div>

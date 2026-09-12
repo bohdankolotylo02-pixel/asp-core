@@ -1,0 +1,155 @@
+@page "{id:int}"
+@model ClientVehicles.Web.Pages.Clients.DetailsModel
+@{
+    ViewData["Title"] = Model.Client.Name;
+}
+
+<div class="breadcrumb">
+    <a asp-page="Index">Clients</a> / @Model.Client.Name
+</div>
+
+<div class="page-head">
+    <div class="page-head__text">
+        <h1>
+            @Model.Client.Name
+            @if (Model.Client.IsArchived)
+            {
+                <span class="badge badge--archived">Archived</span>
+            }
+        </h1>
+        <p class="page-head__sub">
+            @Model.ActiveVehicles.Count active vehicle(s)@(Model.ArchivedVehicles.Count > 0 ? $", {Model.ArchivedVehicles.Count} archived" : "")
+        </p>
+    </div>
+    <div class="page-head__actions">
+        @if (!Model.Client.IsArchived)
+        {
+            <a class="btn btn--secondary" asp-page="Edit" asp-route-id="@Model.Client.Id">Edit</a>
+            <a class="btn btn--primary" asp-page="/Vehicles/Create" asp-route-clientId="@Model.Client.Id">Add vehicle</a>
+            <form method="post" class="inline-form" asp-page-handler="Archive" asp-route-id="@Model.Client.Id"
+                  data-confirm="Archive @Model.Client.Name? The client and their active vehicles are hidden from the active lists, but nothing is deleted."
+                  data-confirm-label="Archive">
+                <button type="submit" class="btn btn--ghost">Archive</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" class="inline-form" asp-page-handler="Reactivate" asp-route-id="@Model.Client.Id"
+                  data-confirm="Reactivate @Model.Client.Name and the vehicles that were archived with them?"
+                  data-confirm-label="Reactivate" data-confirm-kind="safe">
+                <button type="submit" class="btn btn--primary">Reactivate</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__head">
+        <h2>Client details</h2>
+    </div>
+    <div class="card__body">
+        <dl class="def-list">
+            <div>
+                <dt>Name</dt>
+                <dd>@Model.Client.Name</dd>
+            </div>
+            <div>
+                <dt>Phone</dt>
+                <dd class="mono">@Model.Client.Phone</dd>
+            </div>
+            <div>
+                <dt>NIF / Tax number</dt>
+                <dd>@(string.IsNullOrEmpty(Model.Client.TaxNumber) ? "-" : Model.Client.TaxNumber)</dd>
+            </div>
+            <div>
+                <dt>Address</dt>
+                <dd>@(string.IsNullOrEmpty(Model.Client.Address) ? "-" : Model.Client.Address)</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card__head">
+        <h2>Vehicles</h2>
+        <span class="count-pill">@Model.ActiveVehicles.Count active</span>
+        @if (!Model.Client.IsArchived)
+        {
+            <a class="btn btn--secondary btn--sm" asp-page="/Vehicles/Create" asp-route-clientId="@Model.Client.Id">Add vehicle</a>
+        }
+    </div>
+
+    @if (Model.ActiveVehicles.Count == 0 && Model.ArchivedVehicles.Count == 0)
+    {
+        <div class="empty">
+            <div class="empty__title">No vehicles for this client</div>
+            <div>Vehicles added here stay linked to @Model.Client.Name.</div>
+            @if (!Model.Client.IsArchived)
+            {
+                <div class="empty__actions">
+                    <a class="btn btn--primary btn--sm" asp-page="/Vehicles/Create" asp-route-clientId="@Model.Client.Id">Add vehicle</a>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Plate</th>
+                    <th>Vehicle</th>
+                    <th>VIN</th>
+                    <th>Mileage</th>
+                    <th class="col-actions">&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var vehicle in Model.ActiveVehicles.Concat(Model.ArchivedVehicles))
+                {
+                    <tr class="@(vehicle.IsArchived ? "is-archived" : null)">
+                        <td data-label="Plate">
+                            <a asp-page="/Vehicles/Details" asp-route-id="@vehicle.Id" class="plate">@vehicle.LicensePlate</a>
+                            @if (vehicle.IsArchived)
+                            {
+                                <span class="badge badge--archived">Archived</span>
+                            }
+                        </td>
+                        <td data-label="Vehicle">
+                            <span class="cell-primary">@vehicle.Brand @vehicle.Model</span>
+                        </td>
+                        <td data-label="VIN" class="mono">@(string.IsNullOrEmpty(vehicle.Vin) ? "-" : vehicle.Vin)</td>
+                        <td data-label="Mileage">@(vehicle.Mileage.HasValue ? $"{vehicle.Mileage.Value:n0} km" : "-")</td>
+                        <td class="col-actions">
+                            <div class="btn-row btn-row--end">
+                                @if (!vehicle.IsArchived)
+                                {
+                                    <a class="btn btn--secondary btn--sm" asp-page="/Vehicles/Edit" asp-route-id="@vehicle.Id">Edit</a>
+                                    <form method="post" class="inline-form" asp-page-handler="ArchiveVehicle"
+                                          asp-route-id="@Model.Client.Id" asp-route-vehicleId="@vehicle.Id"
+                                          data-confirm="Archive @vehicle.LicensePlate? The record is kept and can be reactivated later."
+                                          data-confirm-label="Archive">
+                                        <button type="submit" class="btn btn--ghost btn--sm">Archive</button>
+                                    </form>
+                                }
+                                else if (!Model.Client.IsArchived)
+                                {
+                                    <form method="post" class="inline-form" asp-page-handler="ReactivateVehicle"
+                                          asp-route-id="@Model.Client.Id" asp-route-vehicleId="@vehicle.Id"
+                                          data-confirm="Reactivate @vehicle.LicensePlate?"
+                                          data-confirm-label="Reactivate" data-confirm-kind="safe">
+                                        <button type="submit" class="btn btn--secondary btn--sm">Reactivate</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="cell-sub">Reactivate the client first</span>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

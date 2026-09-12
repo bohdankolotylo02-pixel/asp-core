@@ -1,0 +1,69 @@
+@page "{id:int}"
+@model ClientVehicles.Web.Pages.Vehicles.EditModel
+@{
+    ViewData["Title"] = $"Edit {Model.Plate}";
+}
+
+<div class="breadcrumb">
+    <a asp-page="/Clients/Index">Clients</a> /
+    <a asp-page="/Clients/Details" asp-route-id="@Model.ClientId">@Model.ClientName</a> /
+    <a asp-page="Details" asp-route-id="@Model.VehicleId">@Model.Plate</a> / Edit
+</div>
+
+<div class="page-head">
+    <div class="page-head__text">
+        <h1>Edit vehicle</h1>
+        <p class="page-head__sub">Owner: @Model.ClientName. A vehicle keeps its owner, so an edit cannot move it to another client.</p>
+    </div>
+</div>
+
+@if (Model.IsArchived)
+{
+    <div class="flash flash--warning">This vehicle is archived. It stays out of the duplicate checks until it is reactivated.</div>
+}
+
+<form method="post" novalidate data-validate>
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+    <div class="card">
+        <div class="card__body">
+            <div class="form-grid">
+                <div class="field">
+                    <label asp-for="Input.LicensePlate">License plate <span class="req">*</span></label>
+                    <input asp-for="Input.LicensePlate" required autocomplete="off" autofocus />
+                    <span asp-validation-for="Input.LicensePlate" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Vin">VIN</label>
+                    <input asp-for="Input.Vin" autocomplete="off" />
+                    <span asp-validation-for="Input.Vin" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Brand">Brand <span class="req">*</span></label>
+                    <input asp-for="Input.Brand" required autocomplete="off" />
+                    <span asp-validation-for="Input.Brand" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Model">Model <span class="req">*</span></label>
+                    <input asp-for="Input.Model" required autocomplete="off" />
+                    <span asp-validation-for="Input.Model" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Mileage">Current mileage (km)</label>
+                    <input asp-for="Input.Mileage" type="number" min="0" step="1" autocomplete="off" />
+                    <span asp-validation-for="Input.Mileage" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label>Owner</label>
+                    <input value="@Model.ClientName" disabled />
+                    <span class="hint">Set when the vehicle was created.</span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary" data-busy-label="Saving...">Save changes</button>
+                <a class="btn btn--ghost" asp-page="Details" asp-route-id="@Model.VehicleId">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>

@@ -1,0 +1,20 @@
+## Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+## Local SQLite database (created and seeded on first run)
+*.db
+*.db-shm
+*.db-wal
+
+## IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db

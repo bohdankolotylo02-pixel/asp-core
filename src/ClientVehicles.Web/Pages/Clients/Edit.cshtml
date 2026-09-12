@@ -1,0 +1,58 @@
+@page "{id:int}"
+@model ClientVehicles.Web.Pages.Clients.EditModel
+@{
+    ViewData["Title"] = $"Edit {Model.ClientName}";
+}
+
+<div class="breadcrumb">
+    <a asp-page="Index">Clients</a> /
+    <a asp-page="Details" asp-route-id="@Model.ClientId">@Model.ClientName</a> / Edit
+</div>
+
+<div class="page-head">
+    <div class="page-head__text">
+        <h1>Edit client</h1>
+        <p class="page-head__sub">Vehicles stay linked to this client. Editing here never changes them.</p>
+    </div>
+</div>
+
+@if (Model.IsArchived)
+{
+    <div class="flash flash--warning">This client is archived. Changes are saved, but the client stays out of the active lists until reactivated.</div>
+}
+
+<form method="post" novalidate data-validate>
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+    <div class="card">
+        <div class="card__body">
+            <div class="form-grid">
+                <div class="field">
+                    <label asp-for="Input.Name">Name <span class="req">*</span></label>
+                    <input asp-for="Input.Name" required autocomplete="off" autofocus />
+                    <span asp-validation-for="Input.Name" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Phone">Phone <span class="req">*</span></label>
+                    <input asp-for="Input.Phone" required autocomplete="off" />
+                    <span asp-validation-for="Input.Phone" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.TaxNumber">NIF / Tax number</label>
+                    <input asp-for="Input.TaxNumber" autocomplete="off" />
+                    <span asp-validation-for="Input.TaxNumber" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Address">Address</label>
+                    <input asp-for="Input.Address" autocomplete="off" />
+                    <span asp-validation-for="Input.Address" class="field-error"></span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary" data-busy-label="Saving...">Save changes</button>
+                <a class="btn btn--ghost" asp-page="Details" asp-route-id="@Model.ClientId">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>

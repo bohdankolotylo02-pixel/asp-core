@@ -1,0 +1,15 @@
+@page
+@model ClientVehicles.Web.Pages.ErrorModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="card">
+    <div class="empty">
+        <div class="empty__title">@Model.Title@(Model.ErrorCode.HasValue ? $" ({Model.ErrorCode})" : "")</div>
+        <div>@Model.Message</div>
+        <div class="empty__actions">
+            <a class="btn btn--primary btn--sm" asp-page="/Clients/Index">Back to clients</a>
+        </div>
+    </div>
+</div>

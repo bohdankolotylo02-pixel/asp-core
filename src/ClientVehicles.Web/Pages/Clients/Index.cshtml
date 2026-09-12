@@ -1,0 +1,120 @@
+@page
+@model ClientVehicles.Web.Pages.Clients.IndexModel
+@{
+    ViewData["Title"] = "Clients";
+}
+
+<div class="page-head">
+    <div class="page-head__text">
+        <h1>Clients</h1>
+        <p class="page-head__sub">
+            @Model.Rows.Count client(s)@(Model.HasSearch ? $" matching \"{Model.Search}\"" : "")
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <form class="toolbar" method="get">
+        <div class="search-box">
+            <input type="search" id="q" name="q" value="@Model.Search" aria-label="Search clients and vehicles"
+                   placeholder="Search name, phone, NIF, plate or VIN" autocomplete="off" />
+            <input type="hidden" name="show" value="@Model.Filter" />
+            <button type="submit" class="btn btn--secondary btn--sm">Search</button>
+            @if (Model.HasSearch)
+            {
+                <a class="btn btn--ghost btn--sm" asp-page="Index" asp-route-show="@Model.Filter">Clear</a>
+            }
+        </div>
+        <div class="segmented">
+            <a class="@(Model.Filter == ArchiveFilter.Active ? "is-active" : null)"
+               asp-page="Index" asp-route-q="@Model.Search" asp-route-show="@ArchiveFilter.Active">Active</a>
+            <a class="@(Model.Filter == ArchiveFilter.Archived ? "is-active" : null)"
+               asp-page="Index" asp-route-q="@Model.Search" asp-route-show="@ArchiveFilter.Archived">Archived</a>
+            <a class="@(Model.Filter == ArchiveFilter.All ? "is-active" : null)"
+               asp-page="Index" asp-route-q="@Model.Search" asp-route-show="@ArchiveFilter.All">All</a>
+        </div>
+    </form>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty">
+            @if (Model.HasSearch)
+            {
+                <div class="empty__title">No client matches "@Model.Search"</div>
+                <div>Search looks at client name, phone, NIF, license plate and VIN.</div>
+                <div class="empty__actions">
+                    <a class="btn btn--secondary btn--sm" asp-page="Index" asp-route-show="@Model.Filter">Clear search</a>
+                </div>
+            }
+            else if (Model.Filter == ArchiveFilter.Archived)
+            {
+                <div class="empty__title">No archived clients</div>
+                <div>Archived clients stay here instead of being deleted.</div>
+            }
+            else
+            {
+                <div class="empty__title">No clients yet</div>
+                <div>Create the first client, with their vehicle if you already have it.</div>
+                <div class="empty__actions">
+                    <a class="btn btn--primary btn--sm" asp-page="Create">New client</a>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Phone</th>
+                    <th>Vehicles</th>
+                    <th class="col-actions">&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr class="@(row.IsArchived ? "is-archived" : null)">
+                        <td data-label="Client">
+                            <div class="cell-primary">
+                                <a asp-page="Details" asp-route-id="@row.Id">@row.Name</a>
+                                @if (row.IsArchived)
+                                {
+                                    <span class="badge badge--archived">Archived</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(row.TaxNumber))
+                            {
+                                <div class="cell-sub">NIF @row.TaxNumber</div>
+                            }
+                        </td>
+                        <td data-label="Phone" class="mono">@row.Phone</td>
+                        <td data-label="Vehicles">
+                            @if (row.ActiveVehicleCount == 0 && row.ArchivedVehicleCount == 0)
+                            {
+                                <span class="cell-sub">No vehicles</span>
+                            }
+                            else
+                            {
+                                <div class="chips">
+                                    @foreach (var chip in row.Plates)
+                                    {
+                                        <span class="plate @(chip.IsArchived ? "plate--muted" : null) @(row.MatchedPlates.Contains(chip.Plate) ? "plate--match" : null)"
+                                              title="@(chip.IsArchived ? "Archived vehicle" : "Active vehicle")">@chip.Plate</span>
+                                    }
+                                </div>
+                                <div class="cell-sub">
+                                    @row.ActiveVehicleCount active@(row.ArchivedVehicleCount > 0 ? $", {row.ArchivedVehicleCount} archived" : "")
+                                </div>
+                            }
+                        </td>
+                        <td class="col-actions">
+                            <a class="btn btn--secondary btn--sm" asp-page="Details" asp-route-id="@row.Id">Open</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

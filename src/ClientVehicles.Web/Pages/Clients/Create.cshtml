@@ -1,0 +1,95 @@
+@page
+@model ClientVehicles.Web.Pages.Clients.CreateModel
+@{
+    ViewData["Title"] = "New client";
+}
+
+<div class="breadcrumb">
+    <a asp-page="Index">Clients</a> / New client
+</div>
+
+<div class="page-head">
+    <div class="page-head__text">
+        <h1>New client</h1>
+        <p class="page-head__sub">Add the client and, if you already have it, their first vehicle in one step.</p>
+    </div>
+</div>
+
+<form method="post" novalidate data-validate>
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+    <div class="card">
+        <div class="card__head">
+            <h2>Client</h2>
+        </div>
+        <div class="card__body">
+            <div class="form-grid">
+                <div class="field">
+                    <label asp-for="Input.Client.Name">Name <span class="req">*</span></label>
+                    <input asp-for="Input.Client.Name" required autocomplete="off" autofocus />
+                    <span asp-validation-for="Input.Client.Name" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Client.Phone">Phone <span class="req">*</span></label>
+                    <input asp-for="Input.Client.Phone" required autocomplete="off" />
+                    <span asp-validation-for="Input.Client.Phone" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Client.TaxNumber">NIF / Tax number</label>
+                    <input asp-for="Input.Client.TaxNumber" autocomplete="off" />
+                    <span asp-validation-for="Input.Client.TaxNumber" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.Client.Address">Address</label>
+                    <input asp-for="Input.Client.Address" autocomplete="off" />
+                    <span asp-validation-for="Input.Client.Address" class="field-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section__head">
+                    <label class="checkline">
+                        <input type="checkbox" asp-for="Input.AddVehicle" data-toggle-target="vehicle-block" />
+                        Add the first vehicle now
+                    </label>
+                </div>
+                <p class="hint">Both records are saved together. If the vehicle is rejected, the client is not created either.</p>
+
+                <div id="vehicle-block" hidden>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label asp-for="Input.Vehicle.LicensePlate">License plate <span class="req">*</span></label>
+                            <input asp-for="Input.Vehicle.LicensePlate" data-required-when-shown autocomplete="off" placeholder="12-AB-34" />
+                            <span asp-validation-for="Input.Vehicle.LicensePlate" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="Input.Vehicle.Vin">VIN</label>
+                            <input asp-for="Input.Vehicle.Vin" autocomplete="off" />
+                            <span asp-validation-for="Input.Vehicle.Vin" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="Input.Vehicle.Brand">Brand <span class="req">*</span></label>
+                            <input asp-for="Input.Vehicle.Brand" data-required-when-shown autocomplete="off" />
+                            <span asp-validation-for="Input.Vehicle.Brand" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="Input.Vehicle.Model">Model <span class="req">*</span></label>
+                            <input asp-for="Input.Vehicle.Model" data-required-when-shown autocomplete="off" />
+                            <span asp-validation-for="Input.Vehicle.Model" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label asp-for="Input.Vehicle.Mileage">Current mileage (km)</label>
+                            <input asp-for="Input.Vehicle.Mileage" type="number" min="0" step="1" autocomplete="off" />
+                            <span asp-validation-for="Input.Vehicle.Mileage" class="field-error"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary" data-busy-label="Saving...">Create client</button>
+                <a class="btn btn--ghost" asp-page="Index">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>

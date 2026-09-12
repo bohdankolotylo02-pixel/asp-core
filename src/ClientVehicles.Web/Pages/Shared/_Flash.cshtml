@@ -1,0 +1,17 @@
+@{
+    var success = TempData["FlashSuccess"] as string;
+    var warnings = TempData["FlashWarnings"] as string[] ?? Array.Empty<string>();
+    var error = TempData["FlashError"] as string;
+}
+@if (!string.IsNullOrEmpty(success))
+{
+    <div class="flash flash--success">@success</div>
+}
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="flash flash--error">@error</div>
+}
+@foreach (var warning in warnings)
+{
+    <div class="flash flash--warning">@warning</div>
+}
