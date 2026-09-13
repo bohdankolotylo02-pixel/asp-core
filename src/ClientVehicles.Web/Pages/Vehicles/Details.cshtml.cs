@@ -29,13 +29,13 @@ public class DetailsModel : AppPageModel
 
     public async Task<IActionResult> OnPostArchiveAsync(int id, CancellationToken ct)
     {
-        var result = await _vehicles.ArchiveAsync(id, ct);
+        var result = await _vehicles.ArchiveAsync(id, ct: ct);
         return Finish(result, id, "Vehicle archived.");
     }
 
     public async Task<IActionResult> OnPostReactivateAsync(int id, CancellationToken ct)
     {
-        var result = await _vehicles.ReactivateAsync(id, ct);
+        var result = await _vehicles.ReactivateAsync(id, ct: ct);
         return Finish(result, id, "Vehicle reactivated.");
     }
 

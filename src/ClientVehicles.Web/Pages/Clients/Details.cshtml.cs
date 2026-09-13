@@ -49,13 +49,14 @@ public class DetailsModel : AppPageModel
 
     public async Task<IActionResult> OnPostArchiveVehicleAsync(int id, int vehicleId, CancellationToken ct)
     {
-        var result = await _vehicles.ArchiveAsync(vehicleId, ct);
+        // The route carries both ids, so the service is told which client the vehicle must belong to.
+        var result = await _vehicles.ArchiveAsync(vehicleId, requiredClientId: id, ct: ct);
         return Finish(result, id, "Vehicle archived.");
     }
 
     public async Task<IActionResult> OnPostReactivateVehicleAsync(int id, int vehicleId, CancellationToken ct)
     {
-        var result = await _vehicles.ReactivateAsync(vehicleId, ct);
+        var result = await _vehicles.ReactivateAsync(vehicleId, requiredClientId: id, ct: ct);
         return Finish(result, id, "Vehicle reactivated.");
     }
 

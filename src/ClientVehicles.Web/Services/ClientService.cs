@@ -107,7 +107,7 @@ public class ClientService
 
         if (input.AddVehicle)
         {
-            var check = await _vehicles.ValidateForSaveAsync(input.Vehicle, vehicleIdToIgnore: null, prefix: "Vehicle.", ct);
+            var check = await _vehicles.ValidateForSaveAsync(input.Vehicle, vehicleIdToIgnore: null, prefix: "Vehicle.", ct: ct);
             if (!check.Succeeded)
             {
                 return check;
@@ -130,7 +130,7 @@ public class ClientService
             // people saving at the same time). The partial unique indexes are the real guarantee.
             _db.ChangeTracker.Clear();
             return OperationResult.Failure("Vehicle.LicensePlate",
-                "That license plate or VIN was just registered by another active vehicle. Nothing was saved.");
+                "That license plate or VIN was just registered by another vehicle. Nothing was saved.");
         }
 
         return OperationResult.Success(client.Id);
@@ -227,7 +227,7 @@ public class ClientService
             if (conflict is not null)
             {
                 result.AddWarning(
-                    $"Vehicle {vehicle.LicensePlate} stayed archived because {conflict} is already used by another active vehicle.");
+                    $"Vehicle {vehicle.LicensePlate} stayed archived because {conflict} is already used by another vehicle.");
                 continue;
             }
 

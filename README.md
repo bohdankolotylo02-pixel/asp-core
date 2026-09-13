@@ -31,8 +31,8 @@ To start again from clean demo data, stop the app, delete `clientvehicles.db` an
 dotnet test
 ```
 
-28 tests covering the business rules: relational integrity, uniqueness of plate and VIN among active
-vehicles, archive and reactivate behaviour, atomic creation of client + first vehicle, text
+34 tests covering the business rules: relational integrity, plate uniqueness among active vehicles,
+VIN uniqueness across all vehicles, ownership checks, archive and reactivate behaviour, atomic creation of client + first vehicle, text
 normalisation and search. They run against a real SQLite database built from the migrations.
 
 ## What the app does

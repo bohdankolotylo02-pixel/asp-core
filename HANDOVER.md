@@ -53,10 +53,11 @@ all find the same vehicle.
 
 - Foreign key `Vehicle.ClientId` is required and configured `OnDelete(Restrict)`, so a client with
   vehicles can never be deleted out from under them, even from outside the app.
-- Unique **partial** index on `LicensePlateKey` where `IsArchived = 0`, and the same for `VinKey`
-  (where it is not null). This is what makes "two active vehicles cannot share a plate" a guarantee
-  rather than a hope: it also holds against double submits and concurrent users. Archived vehicles
-  are outside the index, which is what frees a plate for reuse.
+- Unique **partial** index on `LicensePlateKey` where `IsArchived = 0`. This is what makes "two active
+  vehicles cannot share a plate" a guarantee rather than a hope: it also holds against double submits
+  and concurrent users. Archived vehicles are outside the index, which is what frees a plate for reuse.
+- Unique **partial** index on `VinKey` where it is not null, with **no** archive condition. A VIN
+  identifies the physical car permanently, so it stays reserved after the vehicle is archived.
 - Check constraints: `Mileage IS NULL OR Mileage >= 0`, and non-empty required text on both tables.
 - `NOT NULL` and max lengths on every required column.
 
@@ -94,6 +95,12 @@ between clients is not exposed. It is a small change if you want it (a dropdown 
 both the page and the service refuse it, so a stale tab cannot create an active vehicle under an
 archived client.
 
+**Vehicle actions reached through a client route re-check ownership.** The archive and reactivate
+handlers on the client details page receive both the client id and the vehicle id. The service is told
+which client the vehicle must belong to and refuses the operation if it does not, so a crafted POST
+cannot archive a vehicle that belongs to somebody else. The vehicle pages address a vehicle directly
+and pass no client id, so nothing is checked twice.
+
 **No CSS framework.** About ten screens did not justify pulling in Bootstrap, so the UI is one
 stylesheet of design tokens and small components. No jQuery either: confirmations, the optional
 vehicle block and the double submit guard are around 150 lines of plain JavaScript. Confirmations use
@@ -120,14 +127,14 @@ no-ops when the database has data.
 | Phone normalisation | Stored as typed, digits only copy used for search. No country specific formatting, since the format is a business decision |
 | VIN normalisation | Same as plates: upper case for display, letters and digits for comparison. Empty VIN is stored as NULL, so many vehicles without a VIN are fine |
 | Search scope | Name, phone, NIF, plate, VIN. NIF was not in the list but belongs in the same box for an SME workshop |
-| Uniqueness of VIN | Treated like the plate: unique among **active** vehicles only |
+| Uniqueness of VIN | Unique across **all** vehicles, archived included, because the VIN identifies the physical car permanently. Unlike the plate, archiving does not release it |
 | Client archive cascade | Archives the client's active vehicles (see above) |
 
 If any of these should behave differently, they are all one small change each.
 
 ## 5. Testing I ran
 
-**Automated: 28 tests, all passing** (`dotnet test`). They run against a real SQLite database created
+**Automated: 34 tests, all passing** (`dotnet test`). They run against a real SQLite database created
 from the migrations, not the EF in-memory provider, because the in-memory provider ignores unique
 indexes and check constraints, which are exactly the guarantees being tested. Coverage:
 
@@ -145,6 +152,10 @@ indexes and check constraints, which are exactly the guarantees being tested. Co
 - editing a client keeps vehicle associations; editing a vehicle updates one row and cannot take another active plate
 - search by name, phone, plate, VIN, accents, and the archived filter
 - whitespace trimmed, empty optional fields stored as NULL
+- a vehicle belonging to client B cannot be archived or reactivated through client A's route, while
+  its real owner still can
+- an archived vehicle keeps its VIN reserved, at the service level, when editing an archived record,
+  and at the database level when the service is bypassed
 
 **Functional pass: 75 checks against the running app, all passing.** Driven over HTTP against the real
 pages (forms, antiforgery tokens, redirects), covering the normal workflows you listed and the edge

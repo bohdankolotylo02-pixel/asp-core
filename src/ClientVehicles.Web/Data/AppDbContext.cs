@@ -60,10 +60,12 @@ public class AppDbContext : DbContext
                 .HasFilter("\"IsArchived\" = 0")
                 .HasDatabaseName("UX_Vehicles_LicensePlateKey_Active");
 
+            // The VIN identifies the physical car permanently, so it stays unique even after the
+            // vehicle is archived. Only rows that actually carry a VIN take part in the index.
             entity.HasIndex(v => v.VinKey)
                 .IsUnique()
-                .HasFilter("\"IsArchived\" = 0 AND \"VinKey\" IS NOT NULL")
-                .HasDatabaseName("UX_Vehicles_VinKey_Active");
+                .HasFilter("\"VinKey\" IS NOT NULL")
+                .HasDatabaseName("UX_Vehicles_VinKey");
 
             entity.HasIndex(v => v.ClientId);
             entity.HasIndex(v => v.IsArchived);

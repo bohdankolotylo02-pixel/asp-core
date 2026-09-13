@@ -35,7 +35,7 @@ public class VehicleService
                 "This client is archived. Reactivate the client before adding a vehicle.");
         }
 
-        var check = await ValidateForSaveAsync(input, vehicleIdToIgnore: null, prefix: string.Empty, ct);
+        var check = await ValidateForSaveAsync(input, vehicleIdToIgnore: null, prefix: string.Empty, ct: ct);
         if (!check.Succeeded)
         {
             return check;
@@ -60,7 +60,7 @@ public class VehicleService
         {
             _db.ChangeTracker.Clear();
             return OperationResult.Failure("LicensePlate",
-                "That license plate or VIN was just registered by another active vehicle. Nothing was saved.");
+                "That license plate or VIN was just registered by another vehicle. Nothing was saved.");
         }
 
         return OperationResult.Success(vehicle.Id);
@@ -78,14 +78,11 @@ public class VehicleService
             return OperationResult.Failure(string.Empty, "That vehicle no longer exists.");
         }
 
-        // Uniqueness is a rule about active vehicles, so it is only enforced while the record is active.
-        if (!vehicle.IsArchived)
+        var check = await ValidateForSaveAsync(input, vehicleIdToIgnore: vehicle.Id, prefix: string.Empty,
+            isArchived: vehicle.IsArchived, ct: ct);
+        if (!check.Succeeded)
         {
-            var check = await ValidateForSaveAsync(input, vehicleIdToIgnore: vehicle.Id, prefix: string.Empty, ct);
-            if (!check.Succeeded)
-            {
-                return check;
-            }
+            return check;
         }
 
         ApplyInput(vehicle, input);
@@ -99,18 +96,28 @@ public class VehicleService
         {
             _db.ChangeTracker.Clear();
             return OperationResult.Failure("LicensePlate",
-                "That license plate or VIN is already used by another active vehicle. Nothing was saved.");
+                "That license plate or VIN is already used by another vehicle. Nothing was saved.");
         }
 
         return OperationResult.Success(vehicle.Id);
     }
 
-    public async Task<OperationResult> ArchiveAsync(int id, CancellationToken ct = default)
+    /// <summary>
+    /// Archives a vehicle. When <paramref name="requiredClientId"/> is given, the vehicle must belong
+    /// to that client: the client pages address vehicles through a client route, so the ownership is
+    /// re-checked here instead of trusting the ids in the request.
+    /// </summary>
+    public async Task<OperationResult> ArchiveAsync(int id, int? requiredClientId = null, CancellationToken ct = default)
     {
         var vehicle = await _db.Vehicles.FirstOrDefaultAsync(v => v.Id == id, ct);
         if (vehicle is null)
         {
             return OperationResult.Failure(string.Empty, "That vehicle no longer exists.");
+        }
+
+        if (requiredClientId is not null && vehicle.ClientId != requiredClientId)
+        {
+            return OperationResult.Failure(string.Empty, "That vehicle does not belong to this client.");
         }
 
         if (vehicle.IsArchived)
@@ -129,12 +136,20 @@ public class VehicleService
         return OperationResult.Success(vehicle.Id);
     }
 
-    public async Task<OperationResult> ReactivateAsync(int id, CancellationToken ct = default)
+    /// <summary>
+    /// Reactivates a vehicle. <paramref name="requiredClientId"/> works as in <see cref="ArchiveAsync"/>.
+    /// </summary>
+    public async Task<OperationResult> ReactivateAsync(int id, int? requiredClientId = null, CancellationToken ct = default)
     {
         var vehicle = await _db.Vehicles.Include(v => v.Client).FirstOrDefaultAsync(v => v.Id == id, ct);
         if (vehicle is null)
         {
             return OperationResult.Failure(string.Empty, "That vehicle no longer exists.");
+        }
+
+        if (requiredClientId is not null && vehicle.ClientId != requiredClientId)
+        {
+            return OperationResult.Failure(string.Empty, "That vehicle does not belong to this client.");
         }
 
         if (!vehicle.IsArchived)
@@ -152,7 +167,7 @@ public class VehicleService
         if (conflict is not null)
         {
             return OperationResult.Failure(string.Empty,
-                $"This vehicle cannot be reactivated: {conflict} is already used by another active vehicle.");
+                $"This vehicle cannot be reactivated: {conflict} is already used by another vehicle.");
         }
 
         var now = _clock.GetUtcNow().UtcDateTime;
@@ -166,14 +181,17 @@ public class VehicleService
     }
 
     /// <summary>
-    /// Business rules that the data annotations on the input model cannot express, because they
-    /// need the database: plate and VIN must be unique among active vehicles.
+    /// Business rules that the data annotations on the input model cannot express, because they need
+    /// the database. The license plate must be unique among active vehicles, so an archived vehicle
+    /// releases its plate. The VIN identifies the physical car, so it must be unique across every
+    /// vehicle, archived ones included.
     /// The <paramref name="prefix"/> keeps the error keys aligned with the combined create form.
     /// </summary>
     internal async Task<OperationResult> ValidateForSaveAsync(
         VehicleInput input,
         int? vehicleIdToIgnore,
         string prefix,
+        bool isArchived = false,
         CancellationToken ct = default)
     {
         var result = OperationResult.Success();
@@ -185,8 +203,9 @@ public class VehicleService
         {
             result.AddError($"{prefix}LicensePlate", "License plate is required.");
         }
-        else
+        else if (!isArchived)
         {
+            // Plate uniqueness is a rule about active vehicles only.
             var plateTaken = await _db.Vehicles.AnyAsync(
                 v => !v.IsArchived && v.LicensePlateKey == plateKey && (vehicleIdToIgnore == null || v.Id != vehicleIdToIgnore),
                 ct);
@@ -199,13 +218,15 @@ public class VehicleService
 
         if (vinKey is not null)
         {
+            // A VIN belongs to the physical car for its whole life, so it stays reserved even
+            // after the vehicle is archived.
             var vinTaken = await _db.Vehicles.AnyAsync(
-                v => !v.IsArchived && v.VinKey == vinKey && (vehicleIdToIgnore == null || v.Id != vehicleIdToIgnore),
+                v => v.VinKey == vinKey && (vehicleIdToIgnore == null || v.Id != vehicleIdToIgnore),
                 ct);
 
             if (vinTaken)
             {
-                result.AddError($"{prefix}Vin", "Another active vehicle already uses this VIN.");
+                result.AddError($"{prefix}Vin", "Another vehicle already uses this VIN.");
             }
         }
 
@@ -230,8 +251,9 @@ public class VehicleService
 
         if (vinKey is not null)
         {
+            // Any vehicle, archived or not, since VIN uniqueness is not limited to active records.
             var vinTaken = await _db.Vehicles.AnyAsync(
-                v => !v.IsArchived && v.Id != vehicleId && v.VinKey == vinKey, ct);
+                v => v.Id != vehicleId && v.VinKey == vinKey, ct);
 
             if (vinTaken)
             {

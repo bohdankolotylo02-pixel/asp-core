@@ -92,7 +92,7 @@ public class ClientVehicleRulesTests
     }
 
     [Fact]
-    public async Task Two_active_vehicles_cannot_share_a_vin()
+    public async Task Two_vehicles_cannot_share_a_vin()
     {
         using var test = new TestDatabase();
         var client = await CreateClientAsync(test);
@@ -102,6 +102,112 @@ public class ClientVehicleRulesTests
 
         Assert.False(result.Succeeded);
         Assert.Contains(result.Errors, e => e.Key == "Vin");
+    }
+
+    [Fact]
+    public async Task An_archived_vehicle_keeps_its_vin_reserved()
+    {
+        using var test = new TestDatabase();
+        var client = await CreateClientAsync(test);
+        var created = await test.Vehicles.CreateAsync(client, NewVehicle("58-QR-72", vin: "WVWZZZ1KZAW223417"));
+        Assert.True((await test.Vehicles.ArchiveAsync(created.EntityId)).Succeeded);
+
+        // Unlike the plate, the VIN identifies the physical car, so archiving does not release it.
+        var result = await test.Vehicles.CreateAsync(client, NewVehicle("74-LM-08", vin: "WVWZZZ1KZAW223417"));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Key == "Vin");
+        using var check = test.NewContext();
+        Assert.Equal(1, await check.Vehicles.CountAsync());
+    }
+
+    [Fact]
+    public async Task Editing_an_archived_vehicle_onto_a_used_vin_is_rejected()
+    {
+        using var test = new TestDatabase();
+        var client = await CreateClientAsync(test);
+        Assert.True((await test.Vehicles.CreateAsync(client, NewVehicle("58-QR-72", vin: "WVWZZZ1KZAW223417"))).Succeeded);
+        var second = await test.Vehicles.CreateAsync(client, NewVehicle("74-LM-08"));
+        Assert.True((await test.Vehicles.ArchiveAsync(second.EntityId)).Succeeded);
+
+        var result = await test.Vehicles.UpdateAsync(second.EntityId, NewVehicle("74-LM-08", vin: "wvwzzz1kzaw223417"));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Key == "Vin");
+    }
+
+    [Fact]
+    public async Task Database_rejects_a_duplicate_vin_even_when_one_vehicle_is_archived()
+    {
+        using var test = new TestDatabase();
+        var clientId = await CreateClientAsync(test);
+        var created = await test.Vehicles.CreateAsync(clientId, NewVehicle("58-QR-72", vin: "WVWZZZ1KZAW223417"));
+        Assert.True((await test.Vehicles.ArchiveAsync(created.EntityId)).Succeeded);
+
+        var ex = await Assert.ThrowsAsync<SqliteException>(async () =>
+            await test.Db.Database.ExecuteSqlRawAsync(
+                """
+                INSERT INTO Vehicles (ClientId, LicensePlate, LicensePlateKey, Brand, Model, Vin, VinKey,
+                                      IsArchived, ArchivedWithClient, CreatedAtUtc, UpdatedAtUtc)
+                VALUES ({0}, '74-LM-08', '74LM08', 'Ford', 'Transit', 'WVWZZZ1KZAW223417', 'WVWZZZ1KZAW223417',
+                        0, 0, '2026-01-01', '2026-01-01')
+                """.Replace("{0}", clientId.ToString())));
+
+        Assert.Contains("UNIQUE constraint failed", ex.Message);
+    }
+
+    [Fact]
+    public async Task A_vehicle_cannot_be_archived_through_another_client()
+    {
+        using var test = new TestDatabase();
+        var clientA = await CreateClientAsync(test, "Ana Ribeiro", "912 345 678");
+        var clientB = await CreateClientAsync(test, "Carlos Mendes", "916 000 111");
+        var vehicleOfB = await test.Vehicles.CreateAsync(clientB, NewVehicle("58-QR-72"));
+
+        // What a manipulated POST from client A's page would send.
+        var result = await test.Vehicles.ArchiveAsync(vehicleOfB.EntityId, requiredClientId: clientA);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Message.Contains("does not belong to this client"));
+        using var check = test.NewContext();
+        Assert.False((await check.Vehicles.SingleAsync()).IsArchived);
+    }
+
+    [Fact]
+    public async Task A_vehicle_cannot_be_reactivated_through_another_client()
+    {
+        using var test = new TestDatabase();
+        var clientA = await CreateClientAsync(test, "Ana Ribeiro", "912 345 678");
+        var clientB = await CreateClientAsync(test, "Carlos Mendes", "916 000 111");
+        var vehicleOfB = await test.Vehicles.CreateAsync(clientB, NewVehicle("58-QR-72"));
+        Assert.True((await test.Vehicles.ArchiveAsync(vehicleOfB.EntityId)).Succeeded);
+
+        var result = await test.Vehicles.ReactivateAsync(vehicleOfB.EntityId, requiredClientId: clientA);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Message.Contains("does not belong to this client"));
+        using var check = test.NewContext();
+        Assert.True((await check.Vehicles.SingleAsync()).IsArchived);
+    }
+
+    [Fact]
+    public async Task The_owning_client_can_still_archive_and_reactivate_its_vehicle()
+    {
+        using var test = new TestDatabase();
+        var client = await CreateClientAsync(test);
+        var vehicle = await test.Vehicles.CreateAsync(client, NewVehicle("58-QR-72"));
+
+        Assert.True((await test.Vehicles.ArchiveAsync(vehicle.EntityId, requiredClientId: client)).Succeeded);
+        using (var check = test.NewContext())
+        {
+            Assert.True((await check.Vehicles.SingleAsync()).IsArchived);
+        }
+
+        Assert.True((await test.Vehicles.ReactivateAsync(vehicle.EntityId, requiredClientId: client)).Succeeded);
+        using (var check = test.NewContext())
+        {
+            Assert.False((await check.Vehicles.SingleAsync()).IsArchived);
+        }
     }
 
     [Fact]
